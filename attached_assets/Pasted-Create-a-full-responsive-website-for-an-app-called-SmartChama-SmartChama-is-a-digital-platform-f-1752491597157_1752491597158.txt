@@ -1,0 +1,77 @@
+Create a full, responsive website for an app called "SmartChama". SmartChama is a digital platform for managing savings groups (chamas) in Kenya.
+
+The website should include these pages:
+
+1. **Home Page**
+   - Hero section with a brief intro about SmartChama
+   - Call-to-action button (e.g. “Get Started” or “Join Now”)
+   - Section highlighting key features:
+      - Manage chamas
+      - Track contributions
+      - Schedule payouts
+      - Generate reports
+   - Testimonials or success stories
+   - Footer with social media links and contact info
+   - Clean, modern, professional design
+
+2. **Login Page**
+   - Option to log in as either "User" or "Admin" (radio buttons or dropdown)
+   - Fields: Email and Password
+   - Form validation using JavaScript
+   - Clean modern design
+
+3. **Dashboard Page**
+   - Displays cards showing:
+     - Total Chamas
+     - Total Members
+     - Total Contributions (This Month) in KSh
+     - Next Scheduled Payout
+   - Use a modern layout with icons
+
+4. **Chamas Page**
+   - Table listing all chama groups
+   - Option to add, edit, or delete a chama
+   - Search bar to filter chama list
+
+5. **Members Page**
+   - Table showing all members
+   - Member details like name, email, phone, chama group
+   - Option to add, edit, or remove members
+
+6. **Contributions Page**
+   - Table showing member contributions
+   - Fields like member name, amount contributed, date
+   - Filters for date ranges
+
+7. **Payouts Page**
+   - Table showing scheduled or completed payouts
+   - Fields like payout date, amount, recipient chama
+
+8. **Penalties Page**
+   - Table listing any penalties for late payments
+   - Fields like member name, reason, amount, date
+
+9. **Reports Page**
+   - Graphs and charts showing:
+     - Total contributions over time
+     - Payout trends
+     - Penalties summary
+   - Use a JS chart library like Chart.js
+
+10. **Notifications Page**
+    - List of notifications for users/admins
+    - Mark notifications as read/unread
+
+11. **Profile Page**
+    - User or admin profile information
+    - Option to edit profile details
+
+**Additional Requirements:**
+- Navigation sidebar similar to the app screenshot, with icons
+- Responsive design (desktop, tablet, mobile)
+- Clean, modern UI with white background and navy/blue accents
+- Use HTML5, CSS3, and vanilla JavaScript
+- Organize files in proper folders (e.g. /css, /js, /images)
+- Include subtle animations for smooth transitions
+- Add placeholder data where needed
+- Code should be well-commented and easy to modify
