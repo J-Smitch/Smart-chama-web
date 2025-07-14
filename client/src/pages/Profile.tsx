@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
-import { User, Edit, Save, Shield, Phone, Mail, Calendar } from "lucide-react";
+import { User, Edit, Save, Shield, Phone, Mail, Calendar, Bell } from "lucide-react";
 import { InsertUser } from "@shared/schema";
 
 export default function Profile() {
