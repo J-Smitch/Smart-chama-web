@@ -177,6 +177,8 @@ export class MemStorage implements IStorage {
     const user: User = {
       ...insertUser,
       id,
+      role: insertUser.role || "user",
+      phone: insertUser.phone || null,
       createdAt: new Date(),
     };
     this.users.set(id, user);
@@ -205,6 +207,9 @@ export class MemStorage implements IStorage {
     const chama: Chama = {
       ...insertChama,
       id,
+      description: insertChama.description || null,
+      meetingSchedule: insertChama.meetingSchedule || null,
+      createdBy: insertChama.createdBy || null,
       createdAt: new Date(),
     };
     this.chamas.set(id, chama);
@@ -246,6 +251,9 @@ export class MemStorage implements IStorage {
     const member: Member = {
       ...insertMember,
       id,
+      userId: insertMember.userId || null,
+      chamaId: insertMember.chamaId || null,
+      isActive: insertMember.isActive || null,
       joinedAt: new Date(),
     };
     this.members.set(id, member);
@@ -289,6 +297,9 @@ export class MemStorage implements IStorage {
     const contribution: Contribution = {
       ...insertContribution,
       id,
+      status: insertContribution.status || "pending",
+      chamaId: insertContribution.chamaId || null,
+      memberId: insertContribution.memberId || null,
       contributionDate: new Date(),
     };
     this.contributions.set(id, contribution);
@@ -319,7 +330,14 @@ export class MemStorage implements IStorage {
 
   async createPayout(insertPayout: InsertPayout): Promise<Payout> {
     const id = this.currentId++;
-    const payout: Payout = { ...insertPayout, id };
+    const payout: Payout = { 
+      ...insertPayout, 
+      id,
+      status: insertPayout.status || "pending",
+      chamaId: insertPayout.chamaId || null,
+      memberId: insertPayout.memberId || null,
+      notes: insertPayout.notes || null,
+    };
     this.payouts.set(id, payout);
     return payout;
   }
@@ -351,6 +369,9 @@ export class MemStorage implements IStorage {
     const penalty: Penalty = {
       ...insertPenalty,
       id,
+      status: insertPenalty.status || "pending",
+      chamaId: insertPenalty.chamaId || null,
+      memberId: insertPenalty.memberId || null,
       penaltyDate: new Date(),
     };
     this.penalties.set(id, penalty);
@@ -381,6 +402,9 @@ export class MemStorage implements IStorage {
     const notification: Notification = {
       ...insertNotification,
       id,
+      type: insertNotification.type || "info",
+      userId: insertNotification.userId || null,
+      isRead: insertNotification.isRead || null,
       createdAt: new Date(),
     };
     this.notifications.set(id, notification);

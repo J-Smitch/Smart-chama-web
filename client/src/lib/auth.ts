@@ -45,13 +45,37 @@ class AuthManager {
     };
   }
 
-  login(user: User) {
+  async login(user: User) {
     this.authState = {
       user,
       isAuthenticated: true,
     };
     localStorage.setItem("smartchama_user", JSON.stringify(user));
+    
+    // Check for overdue contributions
+    this.checkOverdueContributions(user.id);
+    
     this.notifyListeners();
+  }
+
+  private async checkOverdueContributions(userId: number) {
+    // Only check once per day
+    const lastCheck = localStorage.getItem("smartchama_last_overdue_check");
+    const today = new Date().toDateString();
+    
+    if (lastCheck === today) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/contributions/overdue/${userId}`);
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem("smartchama_last_overdue_check", today);
+      }
+    } catch (error) {
+      console.error("Failed to check overdue contributions:", error);
+    }
   }
 
   logout() {

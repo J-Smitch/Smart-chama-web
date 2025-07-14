@@ -26,8 +26,8 @@ export default function Profile() {
       const response = await apiRequest("PUT", `/api/users/${user?.id}`, data);
       return response.json();
     },
-    onSuccess: (updatedUser) => {
-      login(updatedUser);
+    onSuccess: async (updatedUser) => {
+      await login(updatedUser);
       toast({
         title: "Success",
         description: "Profile updated successfully",

@@ -52,7 +52,7 @@ export default function Signup() {
       const response = await apiRequest("POST", "/api/auth/signup", userData);
       const user = await response.json();
       
-      login(user);
+      await login(user);
       toast({
         title: "Success",
         description: "Account created successfully! Welcome to SmartChama.",

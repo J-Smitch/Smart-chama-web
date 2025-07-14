@@ -231,6 +231,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // M-Pesa STK Push route
+  app.post("/api/mpesa/stkpush", async (req, res) => {
+    try {
+      const { amount, phoneNumber, memberId, chamaId } = req.body;
+      
+      // Safaricom STK Push endpoint
+      const endpoint = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest";
+      
+      // Get Bearer token - In production, you'd get this from auth endpoint
+      const bearerToken = "Bearer nHJJ3T9EkXZm9K8dIlvzIQEJlDH5AVFf";
+      
+      const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
+      const businessShortCode = "174379";
+      const passkey = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919";
+      const password = Buffer.from(businessShortCode + passkey + timestamp).toString('base64');
+
+      const requestPayload = {
+        "BusinessShortCode": businessShortCode,
+        "Password": password,
+        "Timestamp": timestamp,
+        "TransactionType": "CustomerPayBillOnline",
+        "Amount": amount,
+        "PartyA": phoneNumber,
+        "PartyB": businessShortCode,
+        "PhoneNumber": phoneNumber,
+        "CallBackURL": "https://smartchama.repl.co/api/mpesa/callback",
+        "AccountReference": `CHAMA-${chamaId}`,
+        "TransactionDesc": "Chama Contribution"
+      };
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': bearerToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestPayload)
+      });
+
+      const data = await response.json();
+      
+      if (data.ResponseCode === "0") {
+        // Create a pending contribution record
+        const contributionData = {
+          memberId: memberId,
+          chamaId: chamaId,
+          amount: amount,
+          status: "pending"
+        };
+        
+        await storage.createContribution(contributionData);
+        
+        // Create notification for successful payment request
+        await storage.createNotification({
+          userId: memberId,
+          title: "M-Pesa Payment Initiated",
+          message: `Payment request for KSh ${amount} has been sent to your phone.`,
+          type: "info"
+        });
+      }
+      
+      res.json(data);
+    } catch (error) {
+      console.error('M-Pesa STK Push error:', error);
+      res.status(500).json({ message: "Failed to process M-Pesa payment" });
+    }
+  });
+
+  // Check overdue contributions
+  app.get("/api/contributions/overdue/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const members = await storage.getAllMembers();
+      const contributions = await storage.getAllContributions();
+      
+      // Find user's memberships
+      const userMemberships = members.filter(m => m.userId === userId);
+      
+      for (const membership of userMemberships) {
+        // Get member's contributions for this chama
+        const memberContributions = contributions.filter(c => 
+          c.memberId === membership.id && c.status === "completed"
+        );
+        
+        // Check if last contribution was more than 30 days ago
+        const lastContribution = memberContributions
+          .sort((a, b) => {
+            const dateA = a.contributionDate ? new Date(a.contributionDate).getTime() : 0;
+            const dateB = b.contributionDate ? new Date(b.contributionDate).getTime() : 0;
+            return dateB - dateA;
+          })[0];
+        
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const lastContributionDate = lastContribution?.contributionDate ? new Date(lastContribution.contributionDate) : null;
+        if (!lastContribution || !lastContributionDate || lastContributionDate < thirtyDaysAgo) {
+          // Create overdue notification
+          await storage.createNotification({
+            userId: userId,
+            title: "Contribution Reminder",
+            message: "Reminder: Please make your monthly contribution",
+            type: "warning"
+          });
+        }
+      }
+      
+      res.json({ status: "checked" });
+    } catch (error) {
+      console.error('Overdue check error:', error);
+      res.status(500).json({ message: "Failed to check overdue contributions" });
+    }
+  });
+
   // Payouts routes
   app.get("/api/payouts", async (req, res) => {
     try {
@@ -356,6 +470,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  // M-Pesa STK Push route
+  app.post("/api/mpesa/stkpush", async (req, res) => {
+    try {
+      const { amount, phoneNumber, memberId, chamaId } = req.body;
+      
+      if (!amount || !phoneNumber || !memberId || !chamaId) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const payload = {
+        "BusinessShortCode": "174379",
+        "Password": "MTc0Mzc5YmZiMjc5ZjlhYTliZGJjZjE1ZTk3ZGQ3MWE0NjdjZDJiN2YwOGExNWM1NGM1N2U5N2IzM2YyODI3YjdjMWY1MDIwMjUwNzE0MTUzMDAw",
+        "Timestamp": "20250714153000",
+        "TransactionType": "CustomerPayBillOnline",
+        "Amount": amount.toString(),
+        "PartyA": phoneNumber,
+        "PartyB": "174379",
+        "PhoneNumber": phoneNumber,
+        "CallBackURL": "https://my-smartchama.com/callback",
+        "AccountReference": "SmartChama",
+        "TransactionDesc": "Monthly contribution"
+      };
+
+      const headers = {
+        "Authorization": "Bearer oipkXCmPnRijas732Wb+gkwa/fDTG0QkMcPMoBcNWThMuUtlYx/xloZI4Qcrj6I3yVL3g6i7877tfr/sfpe3HHkrC19ze/83fC7guX38UJC0i6VsWdNs0Zelgh36OFlQFX8K1MpfO+DX7wOGjvMFkTtRa9CnvL55Uk7GIDsMEdhrVtR0skl4xA/baLMSKYr7KXF7FSBhmgovVvOfRCxZXnd16I8NslQjAJdVgszSRcSRgGN45f60ooPx7yZ4gc2eg8+wtdl051VcxU5B5sjRiJmWW7rTMiNcdsz9uw5qL9rapQfb3jvTQLBnak/cITz4AAtlGqL4gCeF1lIegVedEg==",
+        "Content-Type": "application/json"
+      };
+
+      const response = await fetch("https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest", {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+      
+      if (data.ResponseCode === "0") {
+        // Create a pending contribution record
+        const contributionData = {
+          memberId: parseInt(memberId),
+          chamaId: parseInt(chamaId),
+          amount: amount.toString(),
+          status: "pending"
+        };
+        
+        await storage.createContribution(contributionData);
+        
+        // Create notification for successful payment prompt
+        await storage.createNotification({
+          userId: parseInt(memberId),
+          title: "Payment Prompt Sent",
+          message: `M-Pesa payment prompt for KSh ${amount} has been sent to your phone. Please complete the payment.`,
+          type: "info"
+        });
+      }
+      
+      res.json(data);
+    } catch (error) {
+      console.error("M-Pesa STK Push error:", error);
+      res.status(500).json({ message: "Failed to process M-Pesa payment" });
+    }
+  });
+
+  // Check for overdue contributions
+  app.get("/api/contributions/overdue/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const contributions = await storage.getAllContributions();
+      
+      // Find user's contributions
+      const userContributions = contributions.filter(c => c.member.userId === userId);
+      
+      // Check if last contribution was more than 30 days ago
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const lastContribution = userContributions
+        .filter(c => c.contributionDate)
+        .sort((a, b) => new Date(b.contributionDate!).getTime() - new Date(a.contributionDate!).getTime())[0];
+      
+      const isOverdue = !lastContribution || new Date(lastContribution.contributionDate!) < thirtyDaysAgo;
+      
+      if (isOverdue) {
+        // Create notification for overdue contribution
+        await storage.createNotification({
+          userId: userId,
+          title: "Contribution Reminder",
+          message: "Reminder: Please make your monthly contribution.",
+          type: "warning"
+        });
+      }
+      
+      res.json({ isOverdue });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to check overdue contributions" });
     }
   });
 

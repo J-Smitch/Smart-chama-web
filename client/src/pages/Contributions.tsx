@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Search, DollarSign, Calendar } from "lucide-react";
+import { Plus, Edit, Trash2, Search, DollarSign, Calendar, Phone, Loader2 } from "lucide-react";
 import { Contribution, InsertContribution } from "@shared/schema";
 
 export default function Contributions() {
@@ -18,6 +18,7 @@ export default function Contributions() {
   const [editingContribution, setEditingContribution] = useState<Contribution | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [paymentLoading, setPaymentLoading] = useState<number | null>(null);
   const [formData, setFormData] = useState<InsertContribution>({
     memberId: 0,
     chamaId: 0,
@@ -108,6 +109,38 @@ export default function Contributions() {
     },
   });
 
+  const mpesaPaymentMutation = useMutation({
+    mutationFn: async (paymentData: { amount: string; phoneNumber: string; memberId: number; chamaId: number }) => {
+      const response = await apiRequest("POST", "/api/mpesa/stkpush", paymentData);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.ResponseCode === "0") {
+        toast({
+          title: "Success",
+          description: "Payment prompt sent successfully! Please check your phone.",
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/contributions"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      } else {
+        toast({
+          title: "Payment Failed",
+          description: data.ResponseDescription || "Failed to send payment prompt",
+          variant: "destructive",
+        });
+      }
+      setPaymentLoading(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to process M-Pesa payment",
+        variant: "destructive",
+      });
+      setPaymentLoading(null);
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       memberId: 0,
@@ -143,6 +176,21 @@ export default function Contributions() {
     if (confirm("Are you sure you want to delete this contribution?")) {
       deleteContributionMutation.mutate(id);
     }
+  };
+
+  const handleMpesaPayment = (member: any) => {
+    // Get the user's phone number from the member data
+    const phoneNumber = member.user.phone || "254795769972"; // Default to your phone number
+    const chama = chamas?.find((c: any) => c.id === member.chamaId);
+    const amount = chama?.contributionAmount || "100";
+    
+    setPaymentLoading(member.id);
+    mpesaPaymentMutation.mutate({
+      amount: amount,
+      phoneNumber: phoneNumber,
+      memberId: member.id,
+      chamaId: member.chamaId
+    });
   };
 
   const filteredContributions = contributions?.filter((contribution: any) => {
@@ -256,8 +304,63 @@ export default function Contributions() {
         </Dialog>
       </div>
 
+      {/* Members Section - Make Contributions */}
       <Card>
         <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Phone className="w-5 h-5" />
+            Make Contribution via M-Pesa
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {members && members.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {members.map((member: any) => (
+                <div key={member.id} className="p-4 border rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h3 className="font-medium">{member.user.name}</h3>
+                      <p className="text-sm text-gray-600">{member.chama.name}</p>
+                    </div>
+                    <Badge variant="outline">
+                      KSh {member.chama.contributionAmount}
+                    </Badge>
+                  </div>
+                  <Button
+                    onClick={() => handleMpesaPayment(member)}
+                    disabled={paymentLoading === member.id}
+                    className="w-full"
+                    size="sm"
+                  >
+                    {paymentLoading === member.id ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Phone className="h-4 w-4 mr-2" />
+                        Contribute Now
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Phone className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">No members found</p>
+              <p className="text-sm text-gray-400">Add members to enable M-Pesa contributions</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Contributions History */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Contributions History</CardTitle>
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />

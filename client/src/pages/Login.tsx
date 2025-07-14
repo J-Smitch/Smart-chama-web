@@ -29,7 +29,7 @@ export default function Login() {
       const response = await apiRequest("POST", "/api/auth/login", formData);
       const user = await response.json();
       
-      login(user);
+      await login(user);
       toast({
         title: "Success",
         description: "Welcome back to SmartChama!",
